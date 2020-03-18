@@ -1,8 +1,0 @@
-#ifndef ARP_ATTACK_H
-#define ARP_ATTACK_H
-
-void make_arp_pkt(){
-    
-}
-
-#endif // ARP_ATTACK_H
