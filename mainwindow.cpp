@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <ifaddrs.h>
 #include <pcap.h>
+#include <QTimer>
 #include "function.h"
 #include "parse.h"
 #include "rt_parse.h"
@@ -25,6 +26,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     ui->attack_btn->setEnabled(0);
     ui->stop_btn->setEnabled(0);
+    timer = new QTimer;
+    timer->start();
+    timer->setInterval(1000);
+
 }
 
 MainWindow::~MainWindow()
@@ -96,6 +101,11 @@ void MainWindow::on_check_btn_clicked()
 
 void MainWindow::on_attack_btn_clicked()
 {
+    ui->interface_browser->setText("[*] Start attack");
+    connect(timer, SIGNAL(timeout()), this, SLOT(send_attack_pkt()));
+}
+
+void MainWindow::send_attack_pkt(){
     char dev[10] = {0, };
     qsnprintf(dev, sizeof(iface_info.name), "%s", iface_info.name.toUtf8().constData());
 
@@ -107,26 +117,14 @@ void MainWindow::on_attack_btn_clicked()
     make_arp_packet(iface_info.gateway, my_mac, arp_pkt);
     memcpy(arp_spoofed_pkt, arp_pkt, sizeof(*arp_pkt));
     ui->stop_btn->setEnabled(1);
-
-    char errbuf[PCAP_ERRBUF_SIZE];
-    pcap_t* handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
-
-    if (handle == NULL) {
-        fprintf(stderr, "couldn't open device %s: %s\n", dev, errbuf);
-        return;
-    }
-    while(1){
-        if(on == 1){
-            start_attack(arp_spoofed_pkt, dev, handle);
-        }else if(on == 0){
-            break;
-        }
-        usleep(1000000);
-    }
-
+    start_attack(arp_spoofed_pkt, dev);
+    ui->interface_browser->append("[+] send spoofed packet");
 }
 
 void MainWindow::on_stop_btn_clicked()
 {
-    on = 0;
+    disconnect(timer, SIGNAL(timeout()), this, SLOT(send_attack_pkt()));
+    ui->attack_btn->setEnabled(1);
+    ui->stop_btn->setEnabled(0);
+    ui->interface_browser->setText("[-] Stop attack");
 }
