@@ -21,7 +21,6 @@ SOURCES += \
 
 HEADERS += \
     arp_attack.h \
-    function.h \
     mainwindow.h \
     parse.h \
     rt_parse.h

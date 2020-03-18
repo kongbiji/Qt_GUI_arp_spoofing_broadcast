@@ -41,13 +41,26 @@
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>120</y>
-      <width>88</width>
-      <height>27</height>
+      <y>100</y>
+      <width>161</width>
+      <height>61</height>
      </rect>
     </property>
     <property name="text">
-     <string>attack</string>
+     <string>start attack</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="stop_btn">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>100</y>
+      <width>161</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>stop attack</string>
     </property>
    </widget>
   </widget>

